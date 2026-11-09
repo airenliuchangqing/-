@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>车仆授权店铺DSR监控看板 20260915</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --c-primary: #1f4e79; --c-accent: #2f54eb;
+    --c-severe: #cf1322; --c-warn: #faad14; --c-watch: #fa8c16;
+    --c-new: #722ed1; --c-ok: #389e0d; --c-last: #91caff;
+    --c-bg: #eef1f6; --c-card: #fff; --c-text: #333; --c-sub: #555; --c-muted: #888;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: var(--c-bg); padding: 12px; }
+  .dashboard { width: 281mm; min-height: 190mm; margin: 0 auto; background: #fff; padding: 9mm 12mm; box-shadow: 0 2px 14px rgba(0,0,0,0.12); }
+  .header { text-align: center; margin-bottom: 8px; border-bottom: 3px solid #1f4e79; padding-bottom: 6px; }
+  .header h1 { font-size: 25px; color: #1f4e79; font-weight: 800; letter-spacing: 1px; }
+  .header .sub { font-size: 13px; color: #555; margin-top: 4px; font-weight: 600; }
+  .header .sub .warn { color: #cf1322; }
+  .header .sub .ok { color: #389e0d; }
+  .kpi-row { display: flex; gap: 9px; margin-bottom: 9px; }
+  .kpi-card { flex: 1; padding: 8px 12px; border-radius: 8px; border-left: 5px solid #2f54eb; background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%); }
+  .kpi-card .label { font-size: 12px; color: #555; margin-bottom: 3px; font-weight: 600; }
+  .kpi-card .value { font-size: 33px; font-weight: 800; color: #1f4e79; line-height: 1.1; }
+  .kpi-card .unit { font-size: 14px; color: #888; margin-left: 3px; font-weight: normal; }
+  .kpi-card .delta { font-size: 11px; margin-top: 2px; font-weight: 600; }
+  .kpi-card.red    { border-left-color: #f5222d; background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%); }
+  .kpi-card.red .value    { color: #cf1322; }
+  .kpi-card.orange { border-left-color: #fa8c16; background: linear-gradient(135deg, #fff7e6 0%, #ffd591 100%); }
+  .kpi-card.orange .value { color: #d46b08; }
+  .kpi-card.purple { border-left-color: #722ed1; background: linear-gradient(135deg, #f9f0ff 0%, #d3adf7 100%); }
+  .kpi-card.purple .value { color: #531dab; }
+  .kpi-card.teal   { border-left-color: #13c2c2; background: linear-gradient(135deg, #e6fffb 0%, #87e8de 100%); }
+  .kpi-card.teal .value   { color: #08979c; }
+  .kpi-card.green  { border-left-color: #52c41a; background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%); }
+  .kpi-card.green .value  { color: #389e0d; }
+  .charts-row { display: flex; gap: 9px; margin-bottom: 9px; }
+  .chart-box { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 8px 10px; }
+  .chart-box .title { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 4px; padding-left: 8px; border-left: 4px solid #2f54eb; }
+  .chart-main { flex: 1.8; } .chart-side { flex: 1; }
+  #barChart { width: 100%; height: 232px; } #pieChart { width: 100%; height: 232px; }
+  .gone-strip { background: linear-gradient(90deg, #f0f4fa 0%, #e6f4ff 100%); border: 1px solid #bae0ff; border-radius: 8px; padding: 7px 12px; margin-bottom: 9px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .gone-strip .lbl { font-size: 13px; font-weight: 800; color: #0958d9; white-space: nowrap; }
+  .gone-chip { display: inline-flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #91caff; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; color: #1f4e79; }
+  .gone-chip .reason-closed { color: #8c8c8c; font-size: 10.5px; }
+  .gone-chip .reason-up { color: #389e0d; font-size: 10.5px; font-weight: 700; }
+  .gone-chip .reason-noscore { color: #fa8c16; font-size: 10.5px; font-weight: 700; }
+  .gone-chip .score { color: #cf1322; font-weight: 800; }
+  .gone-chip .arrow { color: #888; }
+  .table-box { border: 1px solid #e8e8e8; border-radius: 8px; overflow: hidden; }
+  .table-box .title { background: linear-gradient(90deg, #1f4e79 0%, #2f54eb 100%); color: #fff; padding: 7px 12px; font-size: 14px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px 6px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+  th { background: #f0f4fa; font-weight: 700; color: #1f4e79; font-size: 12.5px; }
+  td.name { text-align: left; font-weight: 600; color: #333; }
+  td.score { font-size: 14.5px; font-weight: 800; }
+  .risk-high { color: #fff; font-weight: 700; background: #cf1322; border-radius: 3px; padding: 2px 8px; }
+  .risk-mid  { color: #fff; font-weight: 700; background: #fa8c16; border-radius: 3px; padding: 2px 8px; }
+  .risk-warn { color: #5c4400; font-weight: 700; background: #faad14; border-radius: 3px; padding: 2px 8px; }
+  .risk-watch { color: #531dab; font-weight: 700; background: #d3adf7; border-radius: 3px; padding: 2px 8px; }
+  .gap-red { color: #cf1322; font-weight: 800; }
+  .down { color: #cf1322; font-weight: 800; } .down-keep { color: #fa8c16; font-weight: 800; }
+  .up { color: #389e0d; font-weight: 800; } .flat { color: #888; }
+  .badge-new { display: inline-block; background: #cf1322; color: #fff; font-size: 9.5px; font-weight: 700; border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+  .badge-add { display: inline-block; background: #722ed1; color: #fff; font-size: 9.5px; font-weight: 700; border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+  .badge-keep { display: inline-block; background: #fa8c16; color: #fff; font-size: 9.5px; font-weight: 700; border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: middle; }
+  .footer { margin-top: 7px; font-size: 11px; color: #777; line-height: 1.55; }
+  .footer .qa { color: #1f4e79; font-weight: 600; }
+  @media print {
+    body { padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .dashboard { box-shadow: none; width: 100%; padding: 6mm; min-height: 0; }
+    @page { size: A4 landscape; margin: 7mm; }
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <div class="header">
+    <h1>车仆授权店铺 DSR 监控看板</h1>
+    <div class="sub">统计周期：2026年09月15日巡店核查 ｜ 管控目标：店铺体验分 ≥ 4.80 分 ｜ <span class="warn">本周异常 8 家</span> · <span class="warn">新下降 3 家</span> · 新增监控 1 家 ｜ <span class="ok">本周脱离监控 5 家（关闭 0 + 提升 5）</span></div>
+  </div>
+
+  <div class="kpi-row">
+
+    <div class="kpi-card red">
+      <div class="label">异常店铺总数（＜4.8）</div>
+      <div class="value">8<span class="unit">家</span></div>
+      <div class="delta">上周 9 家 · 较上周减少 1 家</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="label">最低体验分</div>
+      <div class="value">4.00<span class="unit">分</span></div>
+      <div class="delta">2 家并列最低</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="label">异常店铺平均分</div>
+      <div class="value">4.50<span class="unit">分</span></div>
+      <div class="delta">较上周 4.4 ↑ 0.10</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="label">本周新下降到预警</div>
+      <div class="value">3<span class="unit">家</span></div>
+      <div class="delta">易森汽车养护 · 贸易雨刮器 · CHIEF泰禾荣雨刮器</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="label">本周已脱离监控</div>
+      <div class="value">5<span class="unit">家</span></div>
+      <div class="delta">车宏科技汽车用品↑达标 · CHIEF汽车零部件↑达标 · 先泽↑达标 · 车尚汽车用品↑达标 · 博娅↑达标</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="label">品牌管控目标</div>
+      <div class="value">4.80<span class="unit">分</span></div>
+      <div class="delta">达标线</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-box chart-main">
+      <div class="title">异常店铺体验分 本周 vs 上周 对比</div>
+      <div id="barChart"></div>
+    </div>
+    <div class="chart-box chart-side">
+      <div class="title">异常店铺平台分布（8家）</div>
+      <div id="pieChart"></div>
+    </div>
+  </div>
+
+  <div class="gone-strip">
+    <span class="lbl">本周已脱离监控（5家）：</span>
+    <span class="gone-chip">车仆车宏科技汽车用品<span class="arrow">|</span><span class="score">上周4.78</span><span class="arrow">→</span>本周4.80<span class="reason-up">（提升≥4.8）</span></span><span class="gone-chip">车仆CHIEF汽车零部件旗舰店<span class="arrow">|</span><span class="score">上周4.70</span><span class="arrow">→</span>本周4.80<span class="reason-up">（提升≥4.8）</span></span><span class="gone-chip">车仆先泽专卖店<span class="arrow">|</span><span class="score">上周4.00</span><span class="arrow">→</span>本周4.80<span class="reason-up">（提升≥4.8）</span></span><span class="gone-chip">车仆车尚汽车用品专卖店<span class="arrow">|</span><span class="score">上周4.70</span><span class="arrow">→</span>本周4.80<span class="reason-up">（提升≥4.8）</span></span><span class="gone-chip">车仆博娅专卖店<span class="arrow">|</span><span class="score">上周4.00</span><span class="arrow">→</span>本周4.80<span class="reason-up">（提升≥4.8）</span></span>
+  </div>
+
+  <div class="table-box">
+    <div class="title">异常店铺明细清单（体验分＜4.80）· 按本周分升序</div>
+    <table>
+      <thead>
+        <tr>
+          <th>序号</th><th>授权主体</th><th>店铺名称</th><th>平台</th><th>产品品类</th>
+          <th>本周体验分</th><th>上周体验分</th><th>环比变化</th><th>分差(对目标)</th><th>监控分类</th><th>风险等级</th>
+        </tr>
+      </thead>
+      <tbody>
+<tr><td>1</td><td>—</td><td class="name">车仆装饰自驾旗舰店<span class="badge-keep">持续</span></td><td>京东</td><td>遮阳挡</td><td class="score" style="color:#cf1322">4.00</td><td>4.00</td><td class="flat">持平</td><td class="gap-red">-0.80</td><td class="risk-mid">持续</td><td class="risk-high">严重</td></tr>
+<tr><td>2</td><td>天台笙彩电子商务有限公司</td><td class="name">车仆笙彩专卖店<span class="badge-keep">持续</span></td><td>京东</td><td>遮阳挡</td><td class="score" style="color:#cf1322">4.00</td><td>4.00</td><td class="flat">持平</td><td class="gap-red">-0.80</td><td class="risk-mid">持续</td><td class="risk-high">严重</td></tr>
+<tr><td>3</td><td>易森车品(广西)贸易有限公司</td><td class="name">车仆易森汽车养护专卖店<span class="badge-new">新下降</span></td><td>抖音</td><td>遮阳挡</td><td class="score" style="color:#faad14">4.50</td><td>4.80</td><td class="down">↓ 0.30</td><td class="gap-red">-0.30</td><td class="risk-watch">新下降</td><td class="risk-warn">注意</td></tr>
+<tr><td>4</td><td>清河县启新贺贸易有限公司</td><td class="name">车仆贸易雨刮器专卖店<span class="badge-new">新下降</span></td><td>抖音</td><td>车仆雨刮</td><td class="score" style="color:#faad14">4.70</td><td>4.80</td><td class="down">↓ 0.10</td><td class="gap-red">-0.10</td><td class="risk-watch">新下降</td><td class="risk-warn">注意</td></tr>
+<tr><td>5</td><td>—</td><td class="name">车仆首博专卖店<span class="badge-keep">持续</span></td><td>天猫</td><td>车仆雨刮</td><td class="score" style="color:#faad14">4.70</td><td>4.76</td><td class="down">↓ 0.06</td><td class="gap-red">-0.10</td><td class="risk-mid">持续</td><td class="risk-warn">注意</td></tr>
+<tr><td>6</td><td>清河县泰禾荣贸易有限公司</td><td class="name">车仆CHIEF泰禾荣雨刮器专卖店<span class="badge-new">新下降</span></td><td>抖音</td><td>车仆雨刮</td><td class="score" style="color:#faad14">4.70</td><td>4.90</td><td class="down">↓ 0.20</td><td class="gap-red">-0.10</td><td class="risk-watch">新下降</td><td class="risk-warn">注意</td></tr>
+<tr><td>7</td><td>杭州奇惠丰文化创意有限公司</td><td class="name">车仆车载布艺装饰旗舰店<span class="badge-keep">持续</span></td><td>拼多多</td><td>汽车窗帘</td><td class="score" style="color:#faad14">4.70</td><td>4.70</td><td class="flat">持平</td><td class="gap-red">-0.10</td><td class="risk-mid">持续</td><td class="risk-warn">注意</td></tr>
+<tr><td>8</td><td>临沂路远行商贸有限公司</td><td class="name">车仆路远行专卖店<span class="badge-add">新增监控</span></td><td>拼多多</td><td>后备箱垫</td><td class="score" style="color:#faad14">4.70</td><td>—（上周无分）</td><td class="down">新纳入</td><td class="gap-red">-0.10</td><td class="risk-watch">新增</td><td class="risk-warn">注意</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <span class="qa">QA 核验：</span>数据来源「品牌授权方管理台账」2026年09月15日巡店数据（共 123 条授权记录、36 家本周有体验分）。本周体验分＜4.80 共 8 家，与上周异常数（9 家）较上周减少 1 家；其中持续监控 4 家、本周新下降 3 家、新增监控 1 家。环比下降店铺 4 家（车仆易森汽车养护专卖店↓0.30、车仆贸易雨刮器专卖店↓0.10、车仆首博专卖店↓0.06、车仆CHIEF泰禾荣雨刮器专卖店↓0.20），已完整抓取、无遗漏。<br><span class="qa">脱离监控：</span>上周 9 家异常中，本周 5 家已脱离监控——店铺关闭：无；体验分提升≥4.8：车仆车宏科技汽车用品(4.78→4.80)、车仆CHIEF汽车零部件旗舰店(4.70→4.80)、车仆先泽专卖店(4.00→4.80)、车仆车尚汽车用品专卖店(4.70→4.80)、车仆博娅专卖店(4.00→4.80)；本周无分（无风险/退出评分）：无。<br><span class="qa">趋势预警：</span>2 家并列最低分 4.00（车仆装饰自驾旗舰店、车仆笙彩专卖店）需重点督导整改。<br><span class="qa">数据备注：</span>车仆路远行专卖店 上周无体验分，可能为新授权店铺或新纳入评分体系；车仆装饰自驾旗舰店、车仆首博专卖店 店铺「授权主体」字段为空，建议补齐；台账「异常状态」列对部分新纳入店铺标注与体验分＜4.8 实际异常不一致，建议复核公式逻辑。
+  </div>
+</div>
+
+<script>
+var barChart = echarts.init(document.getElementById('barChart'));
+var shops = ["装饰自驾(京东){keep|持续}", "笙彩(京东){keep|持续}", "易森汽车养护(抖音){new|新降}", "贸易雨刮器(抖音){new|新降}", "首博(天猫){keep|持续}", "CHIEF泰禾荣雨刮器(抖音){new|新降}", "车载布艺装饰(拼多多){keep|持续}", "路远行(拼多多){add|新增}"];
+var barOption = {
+  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: function(v){ return v==null? '—': v.toFixed(2)+' 分'; } },
+  legend: { data: [{ name: '本周体验分', itemStyle: { color: '#cf1322' } }, { name: '上周体验分', itemStyle: { color: '#91caff' } }], top: 0, right: 0, itemWidth: 16, itemHeight: 10, fontSize: 11 },
+  grid: { left: '30%', right: '7%', top: '12%', bottom: '4%' },
+  xAxis: { type: 'value', min: 3.5, max: 5.0, axisLabel: { fontSize: 11 }, splitLine: { lineStyle: { type: 'dashed', color: '#e0e0e0' } } },
+  yAxis: { type: 'category', inverse: true, data: shops, axisLabel: { fontSize: 11, interval: 0, rich: {
+    new: { color: '#cf1322', fontWeight: 800, fontSize: 12 },
+    add: { color: '#722ed1', fontWeight: 800, fontSize: 12 },
+    keep: { color: '#fa8c16', fontWeight: 700, fontSize: 11 }
+  } } },
+  series: [
+    { name: '本周体验分', type: 'bar', barWidth: 11, barGap: '20%',
+       data: [{"value": 4.0, "itemStyle": {"color": "#cf1322", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.0, "itemStyle": {"color": "#cf1322", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.5, "itemStyle": {"color": "#faad14", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.7, "itemStyle": {"color": "#faad14", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.7, "itemStyle": {"color": "#faad14", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.7, "itemStyle": {"color": "#faad14", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.7, "itemStyle": {"color": "#faad14", "borderColor": "#fff", "borderWidth": 1.8}}, {"value": 4.7, "itemStyle": {"color": "#faad14", "borderColor": "#fff", "borderWidth": 1.8}}],
+       label: { show: true, position: 'right', fontSize: 11, fontWeight: 700, color: '#333', formatter: function(p){ return p.value.toFixed(2); } },
+       markLine: { symbol: 'none', lineStyle: { color: '#52c41a', type: 'solid', width: 2 }, label: { formatter: '目标线 4.80', position: 'end', color: '#389e0d', fontSize: 11, fontWeight: 700 }, data: [{ xAxis: 4.80 }] }
+    },
+    { name: '上周体验分', type: 'bar', barWidth: 11,
+       data: [{"value": 4.0, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": 4.0, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": 4.8, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": 4.8, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": 4.76, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": 4.9, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": 4.7, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}, {"value": null, "itemStyle": {"color": "#91caff", "borderColor": "#2f54eb", "borderWidth": 1}}],
+       label: { show: false } }
+  ]
+};
+barChart.setOption(barOption);
+
+var pieChart = echarts.init(document.getElementById('pieChart'));
+var pieOption = {
+  tooltip: { trigger: 'item', formatter: '{b}: {c}家 ({d}%)' },
+  legend: { bottom: '2%', left: 'center', fontSize: 11 },
+  color: ["#2f54eb", "#13c2c2", "#fa8c16", "#722ed1", "#52c41a", "#eb2f96", "#faad14", "#1890ff"],
+  series: [{ name: '平台分布', type: 'pie', radius: ['42%', '68%'], center: ['50%', '44%'],
+    label: { show: true, fontSize: 12, fontWeight: 600, formatter: '{b}\n{c}家' },
+    data: [{"value": 3, "name": "抖音"}, {"value": 2, "name": "京东"}, {"value": 2, "name": "拼多多"}, {"value": 1, "name": "天猫"}] }]
+};
+pieChart.setOption(pieOption);
+
+window.addEventListener('resize', function(){ barChart.resize(); pieChart.resize(); });
+</script>
+</body>
+</html>
